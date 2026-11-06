@@ -52,6 +52,9 @@ button{font:inherit;cursor:pointer}
 .hudbtns button:hover{background:rgba(255,255,255,.14)}
 kbd{font-family:inherit;font-size:.85em;padding:1px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.25);border-bottom-width:2px;background:rgba(255,255,255,.08)}
 .credit{font-size:12px;color:var(--muted);text-align:center}
+.np{font-size:14px;line-height:1.3}
+.np #hud-song{color:#cfe9ff;margin-top:2px}
+.np #hud-song::before{content:'♪ ';color:var(--accent)}
 
 /* ---------- overlays ---------- */
 .screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:10}
@@ -120,7 +123,7 @@ table.scores tr.me td{background:rgba(94,227,107,.2)}
 
 @media (max-width:820px){
   #hud{left:10px;right:10px;top:10px;bottom:auto;width:auto;flex-direction:row;flex-wrap:wrap;align-items:center;padding:10px 14px;gap:8px 16px;border-radius:18px}
-  #hud .brand,#hud .hs,#hud .meta,#hud .credit,#hud .keys{display:none}
+  #hud .brand,#hud .hs,#hud .meta,#hud .credit,#hud .keys,#hud .np{display:none}
   .score{font-size:30px}
   .lives svg{width:20px;height:20px}
   #effect{flex:1 1 140px}
@@ -148,6 +151,7 @@ table.scores tr.me td{background:rgba(94,227,107,.2)}
     <span>Controls</span><span id="hud-controls">WASD</span>
     <span>Difficulty</span><span id="hud-diff">Medium</span>
   </div>
+  <div class="np"><span class="lbl">Now playing</span><div id="hud-song">…</div></div>
   <div class="hudbtns"><button id="btn-menu"><kbd>M</kbd> Menu</button><button id="btn-pause"><kbd>P</kbd> Pause</button></div>
   <div class="credit">Created By Charles and Sammy</div>
 </div>
@@ -271,7 +275,6 @@ function initAudio() {
   const comp = actx.createDynamicsCompressor();
   fxGain.connect(master); musicGain.connect(master); master.connect(comp); comp.connect(actx.destination);
   applyVolumes();
-  music.next = actx.currentTime + 0.1;
 }
 function applyVolumes() {
   if (!actx) return;
@@ -302,73 +305,255 @@ const sfx = {
   poof()  { if (!actx) return; tone(300, actx.currentTime, 0.15, { type: 'sine', vol: 0.1, slideTo: 120 }); }
 };
 
-// The arcade tune from the title screen of the original
-const ARCADE = {
-  f: [523.25, 0, 659.25, 0, 783.99, 0, 1046.50, 0, 880.00, 0, 783.99, 0, 659.25, 0, 523.25, 0, 523.25, 659.25, 783.99, 1046.50],
-  d: [0.15, 0.05, 0.15, 0.05, 0.15, 0.05, 0.15, 0.1, 0.15, 0.05, 0.15, 0.05, 0.15, 0.05, 0.3, 0.15, 0.15, 0.15, 0.15, 0.15]
+/* ---------------------------------------------------------------------
+   Music. Songs are written in note names so they're easy to read and fix:
+     "E5q"  = E in octave 5, quarter note      "F#4e." = dotted eighth F#4
+     w h q e s = whole, half, quarter, eighth, sixteenth      r = rest
+   Every voice in a song lines up bar by bar.
+   --------------------------------------------------------------------- */
+/*SONGS-START*/
+const NOTE_IDX = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const DUR = { w: 4, h: 2, q: 1, e: 0.5, s: 0.25 };
+function parseVoice(str, tr) {
+  const events = []; let t = 0;
+  for (const tok of str.trim().split(/\s+/)) {
+    const m = tok.match(/^([A-Gr])([#b]?)(\d?)([whqes])(\.?)$/);
+    if (!m) throw new Error('Bad note: ' + tok);
+    const d = DUR[m[4]] * (m[5] ? 1.5 : 1);
+    if (m[1] !== 'r') {
+      const midi = 12 * (+m[3] + 1) + NOTE_IDX[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (tr || 0);
+      events.push({ t, d, f: 440 * Math.pow(2, (midi - 69) / 12) });
+    }
+    t += d;
+  }
+  return { events, len: t };
+}
+const rep = (s, n) => Array(n).fill(s).join(' ');
+// Bass helper: one chord per bar ("C") or two per bar ("C/G"), played as bouncing eighth-note octaves
+const BASS_NOTE = { C: ['C3', 'C4'], D: ['D3', 'D4'], E: ['E3', 'E4'], F: ['F2', 'F3'], G: ['G2', 'G3'], A: ['A2', 'A3'], B: ['B2', 'B3'] };
+const pulse = chords => chords.split(' ').map(c => c.split('/').map(r => {
+  const [lo, hi] = BASS_NOTE[r[0]]; const n = c.includes('/') ? 2 : 4;
+  return rep(`${lo}e ${hi}e`, n);
+}).join(' ')).join(' ');
+
+const LEAD = { type: 'triangle', vol: 0.17, sus: 0.7 };
+const BASS = { type: 'triangle', vol: 0.15, sus: 0.45, st: 0.85 };
+const SOFT = { type: 'sine', vol: 0.09, sus: 0.7 };
+
+// ---- Title theme: Sammy's arcade tune from the original, grown into a full song (plays once) ----
+const TITLE_A = 'C5e E5e G5e C6e A5q G5q E5e G5e C5e E5e D5h D5e F5e A5e D6e B5q A5q G5e F5e E5e D5e C5h ' +
+                'C5e E5e G5e C6e A5q G5q A5e B5e C6e D6e E6q C6q B5e A5e G5e F5e E5q D5q C5h C6q rq';
+const TITLE_B = 'F5q A5e F5e C6q A5q G5q E5e G5e C6h F5q A5e F5e D6q C6q B5e A5e G5e F5e G5h ' +
+                'E5q G5e E5e C6q G5q F5q A5e F5e D6q A5q G5e A5e B5e C6e D6q B5q C6h. rq';
+const TITLE_SONG = {
+  name: "Sammy's Theme", by: 'Charles and Sammy', bpm: 150,
+  voices: [
+    { ...LEAD, type: 'square', vol: 0.065, st: 0.8, n:
+      'C5e E5e G5e C6e A5e G5e E5e C5e C5e E5e G5e C6q rq re ' + TITLE_A + ' ' + TITLE_B + ' ' + TITLE_A +
+      ' C5e E5e G5e C6e E6e G6e C7q C6q G5q C5h' },
+    { ...BASS, n: pulse('C C C C/G D/G G/C C A/C G C F C F/D G C F/D G C C C/G D/G G/C C A/C G C') +
+      ' C3e C4e C3e C4e C3e C4e C3e C4e C3h C2h' }
+  ]
 };
-// The in-game songs from the original: [lead notes], [bass notes], gap between notes, repeats
-const SONGS = [
-  { name: 'Ode to Joy', gap: 0.05, reps: 4,
-    lead: [[329.63,.5],[329.63,.5],[349.23,.5],[392,.5],[392,.5],[349.23,.5],[329.63,.5],[293.66,.5],[261.63,.5],[261.63,.5],[293.66,.5],[329.63,.5],[329.63,1.5],[293.66,.25],[293.66,1],
-           [329.63,.5],[329.63,.5],[349.23,.5],[392,.5],[392,.5],[349.23,.5],[329.63,.5],[293.66,.5],[261.63,.5],[293.66,.5],[329.63,.5],[329.63,.5],[293.66,1]],
-    bass: [110,110,146.83,146.83,146.83,146.83,110,110,98,98,110,110,110,110,110,110,110,146.83,146.83,146.83,146.83,110,110,98,110,110,110,110] },
-  { name: 'Minuet in G', gap: 0.05, reps: 3,
-    lead: [[392,.375],[392,.375],[440,.375],[493.88,.375],[392,.375],[440,.375],[392,.375],[349.23,.375],[329.63,.75],[293.66,.375],[329.63,.375],[349.23,.375],[392,.75],[523.25,.375],[493.88,.375],[440,.375],
-           [392,.375],[349.23,.375],[392,.375],[349.23,.375],[329.63,.375],[293.66,.75]],
-    bass: [196,196,196,196,196,220,220,174.61,164.81,146.83,146.83,174.61,196,196,196,220,220,174.61,174.61,196,196,146.83] },
-  { name: 'Spring', gap: 0.02, reps: 3,
-    lead: [[659.25,.3],[659.25,.3],[659.25,.3],[523.25,.3],[587.33,.3],[659.25,.6],[587.33,.3],[523.25,.3],[440,.3],[523.25,.6],[440,.3],[523.25,.3],[587.33,.6],[659.25,.3],[739.99,.3],[783.99,.3],
-           [659.25,.3],[587.33,.3],[523.25,.3],[587.33,.3],[659.25,.6]],
-    bass: [164.81,164.81,164.81,174.61,174.61,164.81,174.61,174.61,220,220,220,174.61,164.81,164.81,196,196,164.81,174.61,174.61,164.81,164.81] },
-  { name: 'Yankee Doodle', gap: 0.02, reps: 4,
-    lead: [[261.63,.3],[261.63,.3],[293.66,.3],[329.63,.3],[261.63,.3],[329.63,.3],[293.66,.3],[261.63,.3],[196,.3],[220,.3],[261.63,.3],[293.66,.3],[261.63,.6],[261.63,.3],[293.66,.3],[329.63,.3],
-           [261.63,.3],[329.63,.3],[293.66,.3],[261.63,.3]],
-    bass: [130.81,130.81,130.81,130.81,130.81,130.81,130.81,130.81,98,98,98,98,130.81,130.81,130.81,130.81,130.81,130.81,130.81,130.81] },
-  { name: 'Mary Had a Little Lamb', gap: 0.02, reps: 2,
-    lead: [[329.63,.4],[293.66,.4],[261.63,.4],[293.66,.4],[329.63,.4],[329.63,.4],[329.63,.4],[293.66,.4],[293.66,.4],[293.66,.4],[329.63,.4],[392,.4],[392,.4],[329.63,.4],[293.66,.4],[261.63,.4],
-           [293.66,.4],[329.63,.4],[329.63,.4],[329.63,.4],[329.63,.4],[293.66,.4],[293.66,.4],[329.63,.4],[293.66,.4],[261.63,.8],[329.63,.4],[293.66,.4],[261.63,.4],[293.66,.4],[329.63,.4],[329.63,.4],[329.63,.8]],
-    bass: [110,110,110,110,110,110,110,110,110,110,110,146.83,146.83,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110,110] },
-  { name: 'Twinkle Twinkle', gap: 0.02, reps: 6,
-    lead: [[261.63,.4],[261.63,.4],[392,.4],[392,.4],[440,.4],[440,.4],[392,.8],[349.23,.4],[349.23,.4],[329.63,.4],[329.63,.4],[293.66,.4],[293.66,.4],[261.63,.8],
-           [392,.4],[392,.4],[349.23,.4],[349.23,.4],[329.63,.4],[329.63,.4],[293.66,.8],[392,.4],[392,.4],[349.23,.4],[349.23,.4],[329.63,.4],[329.63,.4],[293.66,.8],
-           [261.63,.4],[261.63,.4],[392,.4],[392,.4],[440,.4],[440,.4],[392,.8],[349.23,.4],[349.23,.4],[329.63,.4],[329.63,.4],[293.66,.4],[293.66,.4],[261.63,.8]],
-    bass: [130.81,130.81,130.81,130.81,87.31,87.31,87.31,87.31,87.31,130.81,130.81,130.81,130.81,130.81,130.81,130.81,87.31,87.31,130.81,130.81,130.81,
-           130.81,130.81,87.31,87.31,130.81,130.81,130.81,130.81,130.81,130.81,130.81,87.31,87.31,87.31,87.31,87.31,130.81,130.81,130.81,130.81,130.81] },
-  { name: 'Frere Jacques', gap: 0.02, reps: 4,
-    lead: [[261.63,.4],[293.66,.4],[329.63,.4],[261.63,.4],[261.63,.4],[293.66,.4],[329.63,.4],[261.63,.4],[329.63,.4],[349.23,.4],[392,.8],[329.63,.4],[349.23,.4],[392,.8],
-           [392,.4],[440,.4],[392,.4],[349.23,.4],[329.63,.4],[261.63,.4],[392,.4],[440,.4],[392,.4],[349.23,.4],[329.63,.4],[261.63,.4],[261.63,.4],[392,.4],[261.63,.8],[261.63,.4],[392,.4],[261.63,.8]],
-    bass: [130.81,130.81,130.81,130.81,130.81,130.81,130.81,130.81,174.61,174.61,174.61,174.61,174.61,174.61,196,196,196,174.61,130.81,130.81,196,196,196,174.61,130.81,130.81,130.81,174.61,130.81,130.81,174.61,130.81] }
+
+// ---- In-game playlist ----
+// Canon in D (Pachelbel): the ground bass repeats under the melody, and a second violin
+// follows two bars behind, just like the real canon.
+const CANON_BASS = 'D3h A2h B2h F#2h G2h D2h G2h A2h';
+const CANON_V1 = 'F#5h E5h D5h C#5h B4h A4h B4h C#5h';
+const CANON_V2 = 'D5h C#5h B4h A4h G4h F#4h G4h E4h';
+const CANON_V3 = 'D4q F#4q A4q G4q F#4q D4q F#4q E4q D4q B3q D4q A4q G4q B4q A4q G4q';
+const CANON_V4 = 'F#5e D5s E5s F#5e D5s E5s F#5s F#4s G4s A4s B4s C#5s D5s E5s ' +
+                 'D5e B4s C#5s D5e F#4s G4s A4s B4s A4s G4s A4s F#4s G4s A4s ' +
+                 'G4e B4s A4s G4e F#4s E4s F#4s E4s D4s E4s F#4s G4s A4s B4s ' +
+                 'G4e B4s A4s B4e C#5s D5s A4s B4s C#5s D5s E5s F#5s G5s A5s';
+
+const PLAYLIST = [
+  { name: 'Canon in D', by: 'Pachelbel', bpm: 96, voices: [
+    { ...LEAD, n: 'rw rw rw rw ' + [CANON_V1, CANON_V2, CANON_V3, CANON_V4].join(' ') + ' F#5h E5h D5h C#5h B4h A4h B4h C#5h D5w' },
+    { ...SOFT, n: rep('rw', 8) + ' ' + [CANON_V1, CANON_V2, CANON_V3, CANON_V4].join(' ') + ' A4w' },
+    { ...BASS, sus: 0.6, st: 0.95, n: rep(CANON_BASS, 6) + ' D2w' }
+  ] },
+  { name: 'Ode to Joy', by: 'Beethoven', bpm: 120, reps: 2, voices: [
+    { ...LEAD, tr: 12, n:
+      'E4q E4q F4q G4q G4q F4q E4q D4q C4q C4q D4q E4q E4q. D4e D4h ' +
+      'E4q E4q F4q G4q G4q F4q E4q D4q C4q C4q D4q E4q D4q. C4e C4h ' +
+      'D4q D4q E4q C4q D4q E4e F4e E4q C4q D4q E4e F4e E4q D4q C4q D4q G3h ' +
+      'E4q E4q F4q G4q G4q F4q E4q D4q C4q C4q D4q E4q D4q. C4e C4h' },
+    { ...BASS, n:
+      'C3h G2h G2h D3h C3h G2h G2h G2h C3h G2h G2h D3h C3h G2h G2h C3h ' +
+      'G2h D3h G2h C3h G2h B2h C3h G2h C3h G2h G2h D3h C3h G2h G2h C3h' }
+  ] },
+  { name: 'Eine kleine Nachtmusik', by: 'Mozart', bpm: 128, reps: 2, voices: [
+    { ...LEAD, n:
+      'G5q re D5e G5q re D5e G5e D5e G5e B5e D6q rq C6q re A5e C6q re A5e C6e A5e F#5e A5e D5q rq ' +
+      'G5q G5q G5e. B5s A5e. G5s G5e. F#5s F#5q F#5e. A5s C6e. F#5s ' +
+      'A5e G5e G5q G5e. B5s A5e. G5s G5e. F#5s F#5q F#5e. A5s C6e. F#5s A5e G5e G5q rh' },
+    { ...BASS, n:
+      'G3q re D3e G3q re D3e G3e D3e G3e B3e D4q rq C4q re A3e C4q re A3e C4e A3e F#3e A3e D3q rq ' +
+      pulse('G D G D') + ' D3q G2q rh' }
+  ] },
+  { name: 'Minuet in G', by: 'Petzold (Bach notebook)', bpm: 138, reps: 2, voices: [
+    { ...LEAD, n:
+      'D5q G4e A4e B4e C5e D5q G4q G4q E5q C5e D5e E5e F#5e G5q G4q G4q ' +
+      'C5q D5e C5e B4e A4e B4q C5e B4e A4e G4e F#4q G4e A4e B4e G4e A4h. ' +
+      'D5q G4e A4e B4e C5e D5q G4q G4q E5q C5e D5e E5e F#5e G5q G4q G4q ' +
+      'C5q D5e C5e B4e A4e B4q C5e B4e A4e G4e A4q B4e A4e G4e F#4e G4h.' },
+    { ...BASS, tr: -12, st: 0.95, n:
+      'G3h A3q B3h. C4h. B3h. A3h. G3h. D4q B3q G3q D4q D3q C4q ' +
+      'G3h A3q B3h. C4h. B3h. A3h. G3h. C4q D4q D3q G3h G2q' }
+  ] },
+  { name: 'Spring', by: 'Vivaldi', bpm: 104, reps: 2, voices: [
+    { ...LEAD, n:
+      'rh rq re E5e ' +
+      'G#5e G#5e G#5e F#5s E5s B5q. B5s A5s G#5e G#5e G#5e F#5s E5s B5q. B5s A5s ' +
+      'G#5e A5s B5s A5e G#5e F#5q D#5e E5e ' +
+      'G#5e G#5e G#5e F#5s E5s B5q. B5s A5s G#5e G#5e G#5e F#5s E5s B5q. B5s A5s ' +
+      'G#5e A5s B5s A5e G#5e F#5q re B4e E5q B4q G#4q B4q E5h rh' },
+    { ...SOFT, vol: 0.08, n:
+      'rw ' + rep('E5e E5e E5e D#5s C#5s G#5q. G#5s F#5s', 2) + ' rw ' +
+      rep('E5e E5e E5e D#5s C#5s G#5q. G#5s F#5s', 2) + ' rw rw rw' },
+    { ...BASS, n:
+      'rw ' + rep(rep('E3e', 8), 2) + ' E3e E3e E3e E3e B2e B2e E3e E3e ' + rep(rep('E3e', 8), 2) +
+      ' E3e E3e E3e E3e B2e B2e B2e B2e E3q B2q G#2q B2q E2h rh' }
+  ] },
+  { name: 'In the Hall of the Mountain King', by: 'Grieg', bpm: 112, reps: 3, accel: 1.22, voices: [
+    { ...LEAD, tr: 12, n:
+      'B3e C#4e D4e E4e F#4e D4e F#4q E#4e C#4e E#4q E4e C4e E4q ' +
+      'B3e C#4e D4e E4e F#4e D4e F#4e B4e A4e F#4e D4e F#4e A4h ' +
+      'F#4e G#4e A4e B4e C#5e A4e C#5q C5e G#4e C5q B4e G4e B4q ' +
+      'F#4e G#4e A4e B4e C#5e A4e C#5e F#5e E5e C#5e A4e C#5e E5h ' +
+      'B3e C#4e D4e E4e F#4e D4e F#4q E#4e C#4e E#4q E4e C4e E4q ' +
+      'B3e C#4e D4e E4e F#4e D4e F#4e B4e A4e F#4e D4e F#4e B3h' },
+    { ...BASS, st: 0.5, n:
+      'B2q F#2q B2q F#2q C#3q G#2q C#3q G#2q B2q F#2q B2q F#2q D3q A2q D3q A2q ' +
+      'F#2q C#3q F#2q C#3q G#2q D#3q G#2q D#3q F#2q C#3q F#2q C#3q A2q E3q A2q E3q ' +
+      'B2q F#2q B2q F#2q C#3q G#2q C#3q G#2q B2q F#2q B2q F#2q F#2q F#2q B2h' }
+  ] },
+  { name: 'Für Elise', by: 'Beethoven', bpm: 70, reps: 1, voices: (() => {
+    const A = 'E5s D#5s E5s B4s D5s C5s A4e rs C4s E4s A4s B4e rs E4s G#4s B4s C5e rs E4s E5s D#5s ' +
+              'E5s D#5s E5s B4s D5s C5s A4e rs C4s E4s A4s B4e rs E4s C5s B4s';
+    const B = 'E5e. G4s F5s E5s D5e. F4s E5s D5s C5e. E4s D5s C5s B4e rs E4s E5s rs rs E5s E6s rs rs D#5s E5s rs rs D#5s E5s D#5s';
+    const LA = 'rq. A2s E3s A3s rs re E2s E3s G#3s rs re A2s E3s A3s rs re rq. A2s E3s A3s rs re E2s E3s G#3s rs re';
+    const LB = 'C3s G3s C4s rs re G2s G3s B3s rs re A2s E3s A3s rs re E2s E3s E4s rs re rq. rq.';
+    const LEND = 'A2s E3s A3s rs re';
+    return [
+      { ...LEAD, n: `E5s D#5s ${A} A4e re E5s D#5s ${A} A4e rs B4s C5s D5s ${B} ${A} A4q.` },
+      { ...BASS, sus: 0.6, st: 1, n: `re ${LA} ${LEND} ${LA} ${LEND} ${LB} ${LA} ${LEND}` }
+    ];
+  })() },
+  { name: 'Twinkle, Twinkle, Little Star', by: 'traditional', bpm: 112, reps: 2, voices: [
+    { ...LEAD, tr: 12, n:
+      'C4q C4q G4q G4q A4q A4q G4h F4q F4q E4q E4q D4q D4q C4h ' +
+      'G4q G4q F4q F4q E4q E4q D4h G4q G4q F4q F4q E4q E4q D4h ' +
+      'C4q C4q G4q G4q A4q A4q G4h F4q F4q E4q E4q D4q D4q C4h' },
+    { ...BASS, n:
+      'C3h C3h F3h C3h F3h C3h G2h C3h C3h F3h C3h G2h C3h F3h C3h G2h C3h C3h F3h C3h F3h C3h G2h C3h' }
+  ] },
+  { name: 'Yankee Doodle', by: 'traditional', bpm: 132, reps: 3, voices: [
+    { ...LEAD, tr: 12, n:
+      'C4q C4q D4q E4q C4q E4q D4q G3q C4q C4q D4q E4q C4h B3h ' +
+      'C4q C4q D4q E4q F4q E4q D4q C4q B3q G3q A3q B3q C4h C4h' },
+    { ...BASS, n: 'C3h G2h C3h G2h C3h G2h C3h G2h C3h G2h F2h G2h G2h G2h C3h C3h' }
+  ] },
+  { name: 'Mary Had a Little Lamb', by: 'traditional', bpm: 120, reps: 3, voices: [
+    { ...LEAD, tr: 12, n: 'E4q D4q C4q D4q E4q E4q E4h D4q D4q D4h E4q G4q G4h E4q D4q C4q D4q E4q E4q E4q E4q D4q D4q E4q D4q C4w' },
+    { ...BASS, n: 'C3h G2h C3h G2h G2h D3h C3h G2h C3h G2h C3h G2h G2h D3h C3w' }
+  ] },
+  { name: 'Frère Jacques (as a round)', by: 'traditional', bpm: 112, reps: 1, voices: (() => {
+    const F = 'C4q D4q E4q C4q C4q D4q E4q C4q E4q F4q G4h E4q F4q G4h G4e A4e G4e F4e E4q C4q G4e A4e G4e F4e E4q C4q C4q G3q C4h C4q G3q C4h';
+    return [
+      { ...LEAD, tr: 12, n: `${F} ${F} rw rw` },
+      { ...SOFT, vol: 0.12, n: `rw rw ${F} ${F}` },
+      { ...BASS, n: rep('C3h G2h', 18) }
+    ];
+  })() }
 ];
-const music = { mode: 'title', paused: false, song: 0, step: 0, rep: 0, next: 0 };
-function setMusic(mode) {
-  if (music.mode === mode) return;
-  music.mode = mode; music.step = 0; music.rep = 0;
-  if (actx) music.next = actx.currentTime + 0.15;
+/*SONGS-END*/
+
+function compileSong(s) {
+  if (s._c) return s._c;
+  const voices = s.voices.map(v => Object.assign({}, v, parseVoice(v.n, v.tr)));
+  const len = Math.max(...voices.map(v => v.len));
+  const evs = []; let off = 0;
+  for (let r = 0; r < (s.reps || 1); r++) {
+    const spb = 60 / (s.bpm * Math.pow(s.accel || 1, r));
+    voices.forEach(v => v.events.forEach(e => evs.push({ t: off + e.t * spb, d: e.d * spb, f: e.f, v })));
+    off += len * spb;
+  }
+  evs.sort((a, b) => a.t - b.t);
+  return (s._c = { evs, dur: off });
+}
+function playNote(f, start, dur, v, bus) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = v.type || 'triangle';
+  o.frequency.setValueAtTime(f, start);
+  const len = Math.max(0.06, dur * (v.st || 0.92));
+  const a = Math.min(0.02, len * 0.3), dec = Math.min(0.15, len * 0.3), rel = Math.min(0.12, len * 0.4);
+  const vol = v.vol || 0.15, sus = Math.max(0.0002, vol * (v.sus == null ? 0.6 : v.sus));
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.linearRampToValueAtTime(vol, start + a);
+  g.gain.exponentialRampToValueAtTime(sus, start + a + dec);
+  g.gain.setValueAtTime(sus, start + len - rel);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + len);
+  o.connect(g); g.connect(bus);
+  o.start(start); o.stop(start + len + 0.05);
+}
+
+const music = { mode: 'title', paused: false, songIdx: 0, cur: null, song: null, i: 0, t0: 0, done: false, bus: null, pausedAt: null, gapUntil: 0 };
+function stopBus() {
+  if (music.bus && actx) {
+    const old = music.bus;
+    old.gain.setTargetAtTime(0, actx.currentTime, 0.06);
+    setTimeout(() => { try { old.disconnect(); } catch (e) {} }, 1000);
+  }
+  music.bus = null;
+}
+function setMusic(mode, force) {
+  if (music.mode === mode && !force) return;
+  music.mode = mode; music.cur = null; music.done = false; music.pausedAt = null; music.gapUntil = 0;
+  stopBus();
+}
+function skipSong(d) {
+  music.songIdx = (music.songIdx + d + PLAYLIST.length) % PLAYLIST.length;
+  if (music.mode === 'game') { stopBus(); music.cur = null; music.pausedAt = null; music.gapUntil = 0; }
+  showNowPlaying(PLAYLIST[music.songIdx]);
 }
 function musicUpdate() {
-  if (!actx || music.mode === 'off' || music.paused) return;
+  if (!actx || music.mode === 'off') return;
   const now = actx.currentTime;
-  if (music.next < now) music.next = now + 0.05;
-  while (music.next < now + 0.25) {
-    if (music.mode === 'title') {
-      const f = ARCADE.f[music.step], d = ARCADE.d[music.step];
-      if (f) tone(f, music.next, d * 1.7, { type: 'square', vol: 0.06, dest: musicGain });
-      music.next += d; music.step++;
-      if (music.step >= ARCADE.f.length) { music.step = 0; music.next += 0.7; }
-    } else {
-      const s = SONGS[music.song];
-      const [lf, ld] = s.lead[music.step];
-      const bf = s.bass[music.step];
-      tone(lf, music.next, ld + 0.05, { type: 'triangle', vol: 0.22, dest: musicGain });
-      if (bf) tone(bf, music.next, ld + 0.05, { type: 'triangle', vol: 0.16, dest: musicGain });
-      music.next += ld + s.gap; music.step++;
-      if (music.step >= s.lead.length) {
-        music.step = 0; music.rep++;
-        if (music.rep >= s.reps) { music.rep = 0; music.song = (music.song + 1) % SONGS.length; music.next += 0.8; }
-      }
-    }
+  if (music.paused) {
+    if (music.pausedAt == null) { music.pausedAt = now; if (music.bus) music.bus.gain.setTargetAtTime(0, now, 0.04); }
+    return;
   }
+  if (music.pausedAt != null) {
+    const dt = now - music.pausedAt;
+    music.t0 += dt; music.gapUntil += dt; music.pausedAt = null;
+    if (music.bus) music.bus.gain.setTargetAtTime(1, now, 0.04);
+  }
+  if (!music.cur) {
+    if (music.done || now < music.gapUntil) return;
+    music.song = music.mode === 'title' ? TITLE_SONG : PLAYLIST[music.songIdx];
+    music.cur = compileSong(music.song);
+    music.i = 0; music.t0 = now + 0.15;
+    stopBus();
+    music.bus = actx.createGain(); music.bus.connect(musicGain);
+    if (music.mode === 'game') showNowPlaying(music.song);
+  }
+  const evs = music.cur.evs;
+  while (music.i < evs.length && music.t0 + evs[music.i].t < now + 0.3) {
+    const e = evs[music.i++], st = music.t0 + e.t;
+    if (st >= now - 0.02) playNote(e.f, Math.max(st, now), e.d, e.v, music.bus);
+  }
+  if (music.i >= evs.length && now > music.t0 + music.cur.dur) {
+    music.cur = null;
+    if (music.mode === 'title') music.done = true;        // the title theme plays once
+    else { music.songIdx = (music.songIdx + 1) % PLAYLIST.length; music.gapUntil = now + 1.5; }
+  }
+}
+function showNowPlaying(song) {
+  const el = document.getElementById('hud-song');
+  if (el) el.textContent = `${song.name} · ${song.by}`;
 }
 
 /* =====================================================================
@@ -1169,7 +1354,7 @@ function goTitle() {
   showcase.visible = true;
   setHud(false);
   showScreen('title');
-  setMusic('title'); music.paused = false;
+  setMusic('title', true); music.paused = false;
   snake = demoSnake(); prevSnake = snake.map(s => ({ ...s }));
   bodyMat.emissive.setRGB(0, 0, 0); skinMat.emissive.setRGB(0, 0, 0);
   refit();
@@ -1213,6 +1398,7 @@ const MENU = [
   { label: 'Sound', val: () => settings.sound ? 'On' : 'Off', enter() { settings.sound = !settings.sound; }, adjust() { settings.sound = !settings.sound; } },
   { label: 'Effects Volume', val: () => Math.round(settings.fx * 100) + '%', enter() { settings.fx = settings.fx >= 0.99 ? 0 : Math.min(1, Math.round(settings.fx * 10 + 1) / 10); }, adjust(d) { settings.fx = clamp(Math.round(settings.fx * 10 + d) / 10, 0, 1); } },
   { label: 'Music Volume', val: () => Math.round(settings.music * 100) + '%', enter() { settings.music = settings.music >= 0.99 ? 0 : Math.min(1, Math.round(settings.music * 10 + 1) / 10); }, adjust(d) { settings.music = clamp(Math.round(settings.music * 10 + d) / 10, 0, 1); } },
+  { label: 'Song', val: () => PLAYLIST[music.songIdx].name, enter() { skipSong(1); }, adjust(d) { skipSong(d); } },
   { label: 'Controls', val: () => settings.controls, enter() { settings.controls = cycle(CONTROL_MODES, settings.controls, 1); }, adjust(d) { settings.controls = cycle(CONTROL_MODES, settings.controls, d); } },
   { label: 'Difficulty', val: () => settings.difficulty, enter() { settings.difficulty = cycle(DIFFS, settings.difficulty, 1); }, adjust(d) { settings.difficulty = cycle(DIFFS, settings.difficulty, d); } },
   { label: 'Return to Game', enter() { closeMenu(); } },

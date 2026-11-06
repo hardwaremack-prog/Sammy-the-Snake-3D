@@ -30,9 +30,10 @@ A year later I uploaded that same Python file to Claude and asked it to go throu
 
 About 40 minutes later, in one conversation, it was done. Claude:
 
-- read through all 770 lines of our original game and kept everything that made it ours: the sandwiches, the fruit power-ups, the cat, turtle and bulldog, the 3 lives, the high scores, the menu, the name prompt, and all 7 songs we'd typed in note by note
+- read through all 770 lines of our original game and kept everything that made it ours: the sandwiches, the fruit power-ups, the cat, turtle and bulldog, the 3 lives, the high scores, the menu and the name prompt
 - rebuilt it as a real 3D game with lighting, shadows, animated animals and a snake with a face
 - found and fixed bugs we never knew were there (the first sandwich didn't make Sammy grow, food could appear on top of an obstacle, and quick key presses could make Sammy turn back into himself)
+- fixed the music: the songs we'd typed in as lists of frequencies were coming out wrong, so it rewrote each one with the real notes and rhythms, added Canon in D and other classics we'd wanted, and turned our little arcade jingle into a full title theme
 - played the game itself in a test browser to check it worked, took the screenshots on this page, and put it all on GitHub for us
 
 | | |
@@ -72,6 +73,14 @@ McChicken, Pepperoni Pizza, Ice Cream Sandwich, Salami Sub: each is worth 10 poi
 | 🍌 Banana | +1 life (up to 5) |
 | 🍊 Orange | 2x score for 10 seconds |
 | 🍇 Grape | Speed boost for 5 seconds |
+
+## Music
+
+The title screen plays **Sammy's Theme**, built from the arcade jingle in the original game. During play, the game cycles through:
+
+Canon in D (Pachelbel) · Ode to Joy (Beethoven) · Eine kleine Nachtmusik (Mozart) · Minuet in G (Petzold) · Spring (Vivaldi) · In the Hall of the Mountain King (Grieg, and it speeds up!) · Für Elise (Beethoven) · Twinkle, Twinkle, Little Star · Yankee Doodle · Mary Had a Little Lamb · Frère Jacques (sung as a round)
+
+Pick a song from the **Song** option in the menu (M).
 
 ### Danger
 Don't run into the **cat**, **turtle**, **bulldog**, or yourself. You have 3 lives.

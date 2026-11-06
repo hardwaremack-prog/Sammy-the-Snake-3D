@@ -4,6 +4,55 @@
 
 *Created By Charles and Sammy*
 
+![The new 3D title screen](screenshots/new-title.png)
+
+---
+
+## Our story: one year, two versions
+
+### November 2025: the first version
+
+My son and I wanted to make our own game. We had an idea we loved: a snake named Sammy who eats sandwiches instead of apples, dodges cats, turtles and bulldogs, and picks up fruit for power-ups. We built it in Python with Pygame, going back and forth between Google Gemini and Grok.
+
+It took us forever. Every change broke something else, and we spent most of our time copying code between chat windows and trying to figure out why it wouldn't run. We got there in the end, and we were proud of it. It was about the best we could come up with.
+
+| | |
+|---|---|
+| ![Original title screen](screenshots/old-title.png) | ![Original gameplay](screenshots/old-gameplay.png) |
+| *The original title screen* | *The original gameplay* |
+
+![Original menu](screenshots/old-menu.png)
+*The original menu*
+
+### November 2026: the remake with Claude
+
+A year later I uploaded that same Python file to Claude and asked it to go through the game, make it better looking, make it more 3D, and turn it into HTML.
+
+About 40 minutes later, in one conversation, it was done. Claude:
+
+- read through all 770 lines of our original game and kept everything that made it ours: the sandwiches, the fruit power-ups, the cat, turtle and bulldog, the 3 lives, the high scores, the menu, the name prompt, and all 7 songs we'd typed in note by note
+- rebuilt it as a real 3D game with lighting, shadows, animated animals and a snake with a face
+- found and fixed bugs we never knew were there (the first sandwich didn't make Sammy grow, food could appear on top of an obstacle, and quick key presses could make Sammy turn back into himself)
+- played the game itself in a test browser to check it worked, took the screenshots on this page, and put it all on GitHub for us
+
+| | |
+|---|---|
+| ![New 3D gameplay](screenshots/new-gameplay.png) | ![New menu](screenshots/new-menu.png) |
+| *The 3D version* | *The new menu* |
+
+![New game over screen](screenshots/new-gameover.png)
+*Game over, with the high score board*
+
+### What changed
+
+Last year, AI was a tool we fought with. We did the building, and it gave us pieces we had to glue together ourselves.
+
+Now it's more like having a partner who builds what we describe. In the year since the first Sammy, I've made games, Raspberry Pi tools, Meshtastic radio projects and web apps that I never could have made before. The idea still comes from us. The difference is how quickly an idea becomes something real that my kids can actually play.
+
+Same game, same idea, same names in the credits. One year apart.
+
+---
+
 ## How to play
 
 Open `index.html` in a web browser (Chrome, Edge, Firefox or Safari). It needs an internet connection the first time so it can load the 3D engine.
@@ -29,7 +78,5 @@ Don't run into the **cat**, **turtle**, **bulldog**, or yourself. You have 3 liv
 
 ## The original
 
-`original/SNAKE-Final.py` is the first version, written in Python with Pygame in November 2025.
+`original/SNAKE-Final.py` is the first version from November 2025, kept exactly as we made it.
 To run it: `pip install pygame numpy` and then `python SNAKE-Final.py`.
-
-The 3D version keeps the same 30x20 board, the same food, power-ups and obstacles, the same menu options, and the same songs (Ode to Joy, Minuet in G, Spring, Yankee Doodle, Mary Had a Little Lamb, Twinkle Twinkle, Frère Jacques).

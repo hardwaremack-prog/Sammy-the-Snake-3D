@@ -74,6 +74,9 @@ McChicken, Pepperoni Pizza, Ice Cream Sandwich, Salami Sub: each is worth 10 poi
 | 🍊 Orange | 2x score for 10 seconds |
 | 🍇 Grape | Speed boost for 5 seconds |
 
+### Danger
+Don't run into the **cat**, **turtle**, **bulldog**, or yourself. You have 3 lives.
+
 ## Music
 
 The title screen plays **Sammy's Theme**, built from the arcade jingle in the original game. During play, the game cycles through:
@@ -81,9 +84,6 @@ The title screen plays **Sammy's Theme**, built from the arcade jingle in the or
 Canon in D (Pachelbel) · Ode to Joy (Beethoven) · Eine kleine Nachtmusik (Mozart) · Minuet in G (Petzold) · Spring (Vivaldi) · In the Hall of the Mountain King (Grieg, and it speeds up!) · Für Elise (Beethoven) · Twinkle, Twinkle, Little Star · Yankee Doodle · Mary Had a Little Lamb · Frère Jacques (sung as a round)
 
 Pick a song from the **Song** option in the menu (M).
-
-### Danger
-Don't run into the **cat**, **turtle**, **bulldog**, or yourself. You have 3 lives.
 
 ## The original
 

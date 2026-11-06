@@ -115,6 +115,7 @@ table.scores tr.me td{background:rgba(94,227,107,.2)}
 .floater{position:fixed;transform:translate(-50%,-50%);font-weight:700;font-size:30px;color:var(--accent);pointer-events:none;z-index:4;white-space:nowrap;
   text-shadow:0 3px 0 rgba(0,0,0,.4),0 0 20px rgba(255,211,77,.55);animation:floatUp 1.15s ease-out forwards}
 .floater.big{font-size:40px;color:#fff}
+.floater.pet{font-size:24px;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.45),0 0 14px rgba(255,255,255,.4)}
 .floater.bad{color:#ff6b6b;text-shadow:0 3px 0 rgba(0,0,0,.4),0 0 20px rgba(255,80,80,.6)}
 @keyframes floatUp{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}15%{opacity:1;transform:translate(-50%,-70%) scale(1.15)}
   100%{opacity:0;transform:translate(-50%,-260%) scale(1)}}
@@ -302,8 +303,45 @@ const sfx = {
   hurt()  { if (!actx) return; const t = actx.currentTime; tone(220, t, 0.5, { type: 'sawtooth', vol: 0.16, slideTo: 70 }); },
   over()  { if (!actx) return; const t = actx.currentTime; [392, 329.63, 261.63, 196].forEach((f, i) => tone(f, t + i * 0.18, 0.35, { type: 'triangle', vol: 0.22 })); },
   click() { if (!actx) return; tone(880, actx.currentTime, 0.05, { type: 'square', vol: 0.05 }); },
-  poof()  { if (!actx) return; tone(300, actx.currentTime, 0.15, { type: 'sine', vol: 0.1, slideTo: 120 }); }
+  poof()  { if (!actx) return; tone(300, actx.currentTime, 0.15, { type: 'sine', vol: 0.1, slideTo: 120 }); },
+  // --- animal sounds (made from scratch with the Web Audio synthesizer) ---
+  meow() {
+    if (!actx) return;
+    const t = actx.currentTime, o = actx.createOscillator(), f = actx.createBiquadFilter(), g = actx.createGain();
+    o.type = 'sawtooth'; f.type = 'bandpass'; f.Q.value = 5;
+    o.frequency.setValueAtTime(430, t); o.frequency.linearRampToValueAtTime(740, t + 0.18); o.frequency.linearRampToValueAtTime(500, t + 0.6);
+    f.frequency.setValueAtTime(700, t); f.frequency.linearRampToValueAtTime(1900, t + 0.2); f.frequency.linearRampToValueAtTime(800, t + 0.6);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.07);
+    g.gain.setValueAtTime(0.32, t + 0.38); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.65);
+    o.connect(f); f.connect(g); g.connect(fxGain); o.start(t); o.stop(t + 0.7);
+  },
+  bark() {
+    if (!actx) return;
+    [0, 0.24].forEach(dt => {
+      const t = actx.currentTime + dt;
+      const o = actx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(280, t); o.frequency.exponentialRampToValueAtTime(115, t + 0.14);
+      const n = actx.createBufferSource(); n.buffer = noiseBuffer();
+      const nf = actx.createGain(); nf.gain.value = 0.5; n.connect(nf);
+      const f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 750; f.Q.value = 1.1;
+      const g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.6, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(f); nf.connect(f); f.connect(g); g.connect(fxGain);
+      o.start(t); o.stop(t + 0.18); n.start(t); n.stop(t + 0.18);
+    });
+  },
+  whirl() { if (!actx) return; const t = actx.currentTime; tone(260, t, 0.7, { type: 'triangle', vol: 0.12, slideTo: 880 }); tone(390, t + 0.05, 0.65, { type: 'sine', vol: 0.06, slideTo: 1320 }); },
+  boing() { if (!actx) return; const t = actx.currentTime; tone(180, t, 0.3, { type: 'sine', vol: 0.18, slideTo: 520 }); },
+  thud()  { if (!actx) return; tone(140, actx.currentTime, 0.18, { type: 'sine', vol: 0.2, slideTo: 60 }); }
 };
+let _noise = null;
+function noiseBuffer() {
+  if (_noise) return _noise;
+  _noise = actx.createBuffer(1, actx.sampleRate * 0.5, actx.sampleRate);
+  const d = _noise.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return _noise;
+}
 
 /* ---------------------------------------------------------------------
    Music. Songs are written in note names so they're easy to read and fix:
@@ -1022,7 +1060,7 @@ function spawnPower() {
 function clearItems() {
   disposeObj(food && food.obj); food = null;
   disposeObj(power && power.obj); power = null;
-  obstacles.forEach(o => disposeObj(o.obj)); obstacles = [];
+  obstacles.forEach(o => { disposeObj(o.obj); disposeObj(o.marker); }); obstacles = [];
 }
 
 function resetRound(keepScore) {
@@ -1039,7 +1077,12 @@ function resetRound(keepScore) {
     const def = OBSTACLES[rand(OBSTACLES.length)];
     const obj = makeItem(def, 0xff3030, 'obstacle');
     obj.userData.model.rotation.y = Math.round(Math.random() * 4) * Math.PI / 2;
-    obstacles.push({ x: c.x, y: c.y, def, obj });
+    const i2 = obstacles.length;
+    obstacles.push({ x: c.x, y: c.y, def, obj, baseYaw: obj.userData.model.rotation.y,
+      // each animal hops to a new spot every 20 seconds, a third of the way apart from each other
+      nextMove: gameTime + 20 + i2 * 20 / 3,
+      nextAct: gameTime + 4 + i2 * 3.5 + Math.random() * 2,
+      hop: null, act: null, marker: null });
     placeItem(obj, c.x, c.y);
   }
   spawnFood();
@@ -1146,6 +1189,83 @@ function gameOver() {
   overReadyAt = performance.now() + 900;
   showScreen('over');
   updateHUD();
+}
+
+/* ---------- the animals: hop to a new spot every 20s, plus little tricks ---------- */
+const markerGeo = new THREE.RingGeometry(0.3, 0.48, 32);
+const ACT = { cat: { kind: 'meow', dur: 0.9, text: 'Meow!' }, bulldog: { kind: 'bark', dur: 0.8, text: 'Woof! Woof!' }, turtle: { kind: 'spin', dur: 1.0, text: 'Wheee!' } };
+function hopTarget(o) {
+  const h = snake[0];
+  const ok = (x, y) => x >= 0 && y >= 0 && x < GW && y < GH && !(x === o.x && y === o.y) && !occupied(x, y) &&
+    Math.abs(x - h.x) + Math.abs(y - h.y) >= 5 &&
+    !(dir.x && y === h.y && (x - h.x) * dir.x > 0 && Math.abs(x - h.x) < 9) &&
+    !(dir.y && x === h.x && (y - h.y) * dir.y > 0 && Math.abs(y - h.y) < 9);
+  for (let k = 0; k < 300; k++) {
+    const x = o.x + rand(13) - 6, y = o.y + rand(13) - 6;
+    if (ok(x, y)) return { x, y };
+  }
+  return freeCell(ok);
+}
+function startHop(o) {
+  const t = hopTarget(o);
+  if (!t) { o.nextMove = gameTime + 5; return; }
+  const dist = Math.hypot(t.x - o.x, t.y - o.y);
+  o.hop = { fx: cellX(o.x), fz: cellZ(o.y), tx: cellX(t.x), tz: cellZ(t.y), t0: gameTime, dur: 0.7 + dist * 0.06, h: 0.9 + dist * 0.18 };
+  o.x = t.x; o.y = t.y;                      // the landing spot is dangerous right away (shown by the red marker)
+  o.baseYaw = Math.atan2(o.hop.tx - o.hop.fx, o.hop.tz - o.hop.fz);
+  o.marker = new THREE.Mesh(markerGeo, new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.8, depthWrite: false }));
+  o.marker.rotation.x = -Math.PI / 2; o.marker.position.set(o.hop.tx, 0.03, o.hop.tz);
+  scene.add(o.marker);
+  o.act = null;
+  sfx.boing();
+}
+function updateObstacles() {
+  obstacles.forEach((o, i) => {
+    if (!o.hop && gameTime >= o.nextMove) { startHop(o); o.nextMove += 20; }
+    if (!o.hop && !o.act && gameTime >= o.nextAct) {
+      // keep the tricks spread out: wait if another animal just did one, or this one is about to hop
+      const busy = obstacles.some(p => p !== o && (p.hop || (p.act && gameTime - p.act.t0 < 1.5))) || o.nextMove - gameTime < 2;
+      if (busy) { o.nextAct = gameTime + 1.5 + Math.random() * 2; return; }
+      const a = ACT[o.def.key];
+      o.act = { kind: a.kind, t0: gameTime, dur: a.dur };
+      o.nextAct = gameTime + 7 + Math.random() * 7;
+      if (a.kind === 'meow') sfx.meow(); else if (a.kind === 'bark') sfx.bark(); else sfx.whirl();
+      floatText(cellX(o.x), 1.4, cellZ(o.y), a.text, 'pet');
+    }
+  });
+}
+function obstacleFx(o) {
+  const m = o.obj.userData.model;
+  let y = 0, sx = 1, sy = 1, spin = 0, tilt = 0;
+  if (o.hop) {
+    const p = clamp((gameTime - o.hop.t0) / o.hop.dur, 0, 1);
+    const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+    o.obj.position.x = o.hop.fx + (o.hop.tx - o.hop.fx) * e;
+    o.obj.position.z = o.hop.fz + (o.hop.tz - o.hop.fz) * e;
+    y = Math.sin(Math.PI * p) * o.hop.h;
+    sy = p < 0.12 ? 1 - p * 2 : 1 + Math.sin(Math.PI * p) * 0.12;   // crouch, then stretch in the air
+    if (o.marker) o.marker.material.opacity = 0.5 + 0.4 * Math.sin(T * 14);
+    if (p >= 1) {
+      o.obj.position.set(o.hop.tx, 0, o.hop.tz);
+      o.hop = null; o.land = gameTime;
+      disposeObj(o.marker); o.marker = null;
+      burst(o.obj.position.x, 0.15, o.obj.position.z, 0xc9b38a, 14, 2.5, 1.5);
+      sfx.thud();
+    }
+  } else if (o.land && gameTime - o.land < 0.25) {
+    const q = (gameTime - o.land) / 0.25; sy = 1 - 0.25 * Math.sin(Math.PI * q); sx = 1 + 0.15 * Math.sin(Math.PI * q);
+  }
+  if (o.act) {
+    const p = (gameTime - o.act.t0) / o.act.dur;
+    if (p >= 1) o.act = null;
+    else if (o.act.kind === 'meow') { tilt = Math.sin(p * Math.PI * 3) * 0.18; sy *= 1 + 0.1 * Math.sin(p * Math.PI); }
+    else if (o.act.kind === 'bark') { y += Math.abs(Math.sin(p * Math.PI * 2)) * 0.32; sx *= 1 + 0.08 * Math.sin(p * Math.PI * 4); }
+    else { const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; spin = e * Math.PI * 2; y += Math.sin(p * Math.PI) * 0.25; }
+  }
+  m.position.y = y;
+  m.rotation.y = o.baseYaw + spin;
+  m.rotation.z = tilt;
+  m.scale.x *= sx; m.scale.z *= sx; m.scale.y *= sy;
 }
 
 function updateEffects() {
@@ -1378,8 +1498,8 @@ function startGame() {
   showScreen(null);
   setHud(true);
   menuOpen = false; paused = false;
-  resetRound(false);
   gameTime = 0;
+  resetRound(false);
   state = 'play';
   setMusic('game'); music.paused = false;
   requestAnimationFrame(refit);
@@ -1525,6 +1645,7 @@ function frame(now) {
     while (acc >= st && state === 'play') { acc -= st; tick(); }
     alpha = state === 'play' ? acc / st : 1;
     updateEffects();
+    if (state === 'play') updateObstacles();
   } else if (state === 'dying' && !menuOpen) {
     dyingT += dt;
     if (dyingT >= 1.3) finishDying();
@@ -1540,7 +1661,7 @@ function frame(now) {
     const left = 15 - (gameTime - power.born);
     power.obj.visible = left > 3 || Math.sin(T * 20) > -0.2;
   }
-  obstacles.forEach(o => animateItem(o.obj, dt, T));
+  obstacles.forEach(o => { animateItem(o.obj, dt, T); obstacleFx(o); });
   if (showcase.visible) showcase.children.forEach(o => animateItem(o, dt, T));
   updateParticles(dt);
   updateMotes(dt);
@@ -1581,7 +1702,7 @@ document.fonts && document.fonts.ready && document.fonts.ready.then(refit);
 requestAnimationFrame(frame);
 
 // debug hook for automated testing
-window.__sammy = { get state() { return state; }, get score() { return score; }, get lives() { return lives; }, get snake() { return snake; }, get food() { return food && { x: food.x, y: food.y }; }, get dir() { return dir; } };
+window.__sammy = { get state() { return state; }, get score() { return score; }, get lives() { return lives; }, get snake() { return snake; }, get food() { return food && { x: food.x, y: food.y }; }, get dir() { return dir; }, get obstacles() { return obstacles.map(o => ({ x: o.x, y: o.y, k: o.def.key, hop: !!o.hop, act: o.act && o.act.kind, nextMove: o.nextMove })); }, get gameTime() { return gameTime; } };
 })();
 </script>
 </body>

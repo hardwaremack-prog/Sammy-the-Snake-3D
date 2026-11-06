@@ -77,6 +77,8 @@ McChicken, Pepperoni Pizza, Ice Cream Sandwich, Salami Sub: each is worth 10 poi
 ### Danger
 Don't run into the **cat**, **turtle**, **bulldog**, or yourself. You have 3 lives.
 
+The animals don't sit still! Every 20 seconds each one hops to a new spot (they take turns, so they never all move at once). A **red ring** shows where it will land, so stay out of it. In between, the cat meows, the bulldog barks, and the turtle does a little spin.
+
 ## Music
 
 The title screen plays **Sammy's Theme**, built from the arcade jingle in the original game. During play, the game cycles through:

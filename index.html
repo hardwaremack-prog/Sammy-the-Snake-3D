@@ -54,6 +54,12 @@ kbd{font-family:inherit;font-size:.85em;padding:1px 6px;border-radius:6px;border
 .credit{font-size:12px;color:var(--muted);text-align:center}
 .np{font-size:14px;line-height:1.3}
 .np #hud-song{color:#cfe9ff;margin-top:2px}
+.np-head{display:flex;align-items:center;justify-content:space-between}
+.np-btns{display:flex;gap:6px}
+.np-btns button{width:34px;height:30px;display:grid;place-items:center;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--text);padding:0}
+.np-btns button:hover{background:rgba(255,211,77,.2);border-color:rgba(255,211,77,.5)}
+.np-btns svg{width:16px;height:16px;fill:currentColor}
+.np.muted #hud-song{opacity:.5}
 .np #hud-song::before{content:'♪ ';color:var(--accent)}
 
 /* ---------- overlays ---------- */
@@ -152,7 +158,7 @@ table.scores tr.me td{background:rgba(94,227,107,.2)}
     <span>Controls</span><span id="hud-controls">WASD</span>
     <span>Difficulty</span><span id="hud-diff">Medium</span>
   </div>
-  <div class="np"><span class="lbl">Now playing</span><div id="hud-song">…</div></div>
+  <div class="np"><div class="np-head"><span class="lbl">Now playing</span><div class="np-btns"><button id="btn-mpause" title="Pause music"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button><button id="btn-mnext" title="Next song"><svg viewBox="0 0 24 24"><path d="M5 5l10 7-10 7z"/><rect x="16" y="5" width="3" height="14" rx="1"/></svg></button></div></div><div id="hud-song">…</div></div>
   <div class="hudbtns"><button id="btn-menu"><kbd>M</kbd> Menu</button><button id="btn-pause"><kbd>P</kbd> Pause</button></div>
   <div class="credit">Created By Charles and Sammy</div>
 </div>
@@ -538,7 +544,7 @@ function playNote(f, start, dur, v, bus) {
   o.start(start); o.stop(start + len + 0.05);
 }
 
-const music = { mode: 'title', paused: false, songIdx: 0, cur: null, song: null, i: 0, t0: 0, done: false, bus: null, pausedAt: null, gapUntil: 0 };
+const music = { mode: 'title', paused: false, userPaused: false, songIdx: 0, cur: null, song: null, i: 0, t0: 0, done: false, bus: null, pausedAt: null, gapUntil: 0 };
 function stopBus() {
   if (music.bus && actx) {
     const old = music.bus;
@@ -560,7 +566,7 @@ function skipSong(d) {
 function musicUpdate() {
   if (!actx || music.mode === 'off') return;
   const now = actx.currentTime;
-  if (music.paused) {
+  if (music.paused || music.userPaused) {
     if (music.pausedAt == null) { music.pausedAt = now; if (music.bus) music.bus.gain.setTargetAtTime(0, now, 0.04); }
     return;
   }
@@ -588,6 +594,14 @@ function musicUpdate() {
     if (music.mode === 'title') music.done = true;        // the title theme plays once
     else { music.songIdx = (music.songIdx + 1) % PLAYLIST.length; music.gapUntil = now + 1.5; }
   }
+}
+const ICON_PAUSE = '<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+const ICON_PLAY = '<svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>';
+function setMusicPaused(on) {
+  music.userPaused = on;
+  const b = document.getElementById('btn-mpause');
+  if (b) { b.innerHTML = on ? ICON_PLAY : ICON_PAUSE; b.title = on ? 'Play music' : 'Pause music'; }
+  const np = document.querySelector('.np'); if (np) np.classList.toggle('muted', on);
 }
 function showNowPlaying(song) {
   const el = document.getElementById('hud-song');
@@ -684,16 +698,24 @@ function makeMcChicken() {
   const g = new THREE.Group();
   const bun = MAT(0xdc9a4a, { roughness: 0.6 });
   g.add(mesh(new THREE.CylinderGeometry(0.36, 0.32, 0.14, 28), bun, 0, 0.07, 0));
-  g.add(mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.1, 28), MAT(0xc8842c, { roughness: 0.95 }), 0, 0.19, 0));
-  const lettuce = mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.035, 11), MAT(0x63c93f), 0, 0.255, 0);
+  // thick, crispy orange chicken patty that sticks out past the bun
+  const patty = MAT(0xff8a1f, { roughness: 0.95 }), crumb = MAT(0xe86a0c, { roughness: 1 });
+  g.add(mesh(new THREE.CylinderGeometry(0.46, 0.45, 0.15, 30), patty, 0, 0.215, 0));
+  const crumbGeo = S(0.045, 6, 5);
+  for (let i = 0; i < 22; i++) {
+    const a = i / 22 * Math.PI * 2 + (i % 3) * 0.1;
+    const c = mesh(crumbGeo, i % 2 ? crumb : patty, Math.cos(a) * 0.45, 0.17 + (i % 3) * 0.04, Math.sin(a) * 0.45);
+    c.scale.set(1, 0.8, 1); g.add(c);
+  }
+  const lettuce = mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.035, 11), MAT(0x63c93f), 0, 0.305, 0);
   lettuce.rotation.y = 0.3; g.add(lettuce);
-  g.add(mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.03, 24), MAT(0xfff3d2, { roughness: 0.3 }), 0, 0.285, 0));
-  const top = mesh(halfS(0.38, 28, 14), bun, 0, 0.3, 0); top.scale.y = 0.78; g.add(top);
+  g.add(mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.03, 24), MAT(0xfff3d2, { roughness: 0.3 }), 0, 0.335, 0));
+  const top = mesh(halfS(0.38, 28, 14), bun, 0, 0.35, 0); top.scale.y = 0.78; g.add(top);
   const seed = MAT(0xfff6dc, { roughness: 0.4 }), seedGeo = S(0.03, 6, 4);
   for (let i = 0; i < 12; i++) {
     const a = i * 2.39996, t = 0.25 + (i % 4) * 0.2;
-    const s = mesh(seedGeo, seed, Math.sin(t) * Math.cos(a) * 0.38, 0.3 + Math.cos(t) * 0.38 * 0.78, Math.sin(t) * Math.sin(a) * 0.38);
-    s.scale.set(1, 0.6, 1.6); s.rotation.y = a; g.add(s);
+    const sd = mesh(seedGeo, seed, Math.sin(t) * Math.cos(a) * 0.38, 0.35 + Math.cos(t) * 0.38 * 0.78, Math.sin(t) * Math.sin(a) * 0.38);
+    sd.scale.set(1, 0.6, 1.6); sd.rotation.y = a; g.add(sd);
   }
   return g;
 }
@@ -729,13 +751,25 @@ function makeSalamiSub() {
   const g = new THREE.Group();
   const bread = MAT(0xd9a556, { roughness: 0.7 });
   const bottom = mesh(S(0.5, 28, 14), bread, 0, 0.1, 0); bottom.scale.set(0.95, 0.2, 0.36); g.add(bottom);
-  g.add(mesh(new THREE.BoxGeometry(0.86, 0.05, 0.38), MAT(0x63c93f), 0, 0.18, 0));
-  const sal = MAT(0xc0393b, { roughness: 0.4 }), salGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.035, 18);
-  [-0.3, -0.1, 0.1, 0.3].forEach((x, i) => { const s = mesh(salGeo, sal, x, 0.22, 0.02); s.rotation.x = 0.35; s.rotation.z = (i - 1.5) * 0.08; g.add(s); });
-  g.add(mesh(new THREE.BoxGeometry(0.8, 0.025, 0.3), MAT(0xfff3d2, { roughness: 0.3 }), 0, 0.255, 0));
-  const top = mesh(halfS(0.5, 28, 12), bread, 0, 0.26, 0); top.scale.set(0.95, 0.42, 0.36); g.add(top);
+  g.add(mesh(new THREE.BoxGeometry(0.86, 0.04, 0.4), MAT(0x63c93f), 0, 0.175, 0));
+  // big bright-red salami slices, fanned out so they hang over the sides of the bread
+  const sal = MAT(0xd7263d, { roughness: 0.4 }), fat = MAT(0xffd6d6, { roughness: 0.6 });
+  const salGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.035, 22), fatGeo = S(0.022, 6, 4);
+  [-0.32, -0.16, 0, 0.16, 0.32].forEach((x, i) => {
+    const sl = new THREE.Group();
+    sl.add(mesh(salGeo, sal));
+    for (let k = 0; k < 5; k++) { const a = k * 1.3 + i, r = 0.05 + (k % 3) * 0.04; const f = mesh(fatGeo, fat, Math.cos(a) * r, 0.018, Math.sin(a) * r); f.scale.y = 0.4; sl.add(f); }
+    sl.position.set(x, 0.215 + (i % 2) * 0.02, 0.13 * (i % 2 ? -1 : 1));
+    sl.rotation.x = (i % 2 ? -0.45 : 0.45); sl.rotation.z = (i - 2) * 0.07;
+    g.add(sl);
+  });
+  // red tomato slices peeking out too
+  const tom = MAT(0xff3b2f, { roughness: 0.35 });
+  [-0.24, 0.24].forEach(x => { const t = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.03, 18), tom, x, 0.25, 0.12); t.rotation.x = 0.6; g.add(t); });
+  g.add(mesh(new THREE.BoxGeometry(0.8, 0.02, 0.3), MAT(0xfff3d2, { roughness: 0.3 }), 0, 0.27, 0));
+  const top = mesh(halfS(0.5, 28, 12), bread, 0, 0.29, 0); top.scale.set(0.95, 0.42, 0.36); g.add(top);
   const cut = MAT(0xb57b38);
-  [-0.22, 0, 0.22].forEach(x => { const c = mesh(new THREE.BoxGeometry(0.04, 0.02, 0.22), cut, x, 0.465, 0); c.rotation.y = 0.5; g.add(c); });
+  [-0.22, 0, 0.22].forEach(x => { const c = mesh(new THREE.BoxGeometry(0.04, 0.02, 0.22), cut, x, 0.495, 0); c.rotation.y = 0.5; g.add(c); });
   g.rotation.y = 0.5;
   return g;
 }
@@ -1474,7 +1508,7 @@ function goTitle() {
   showcase.visible = true;
   setHud(false);
   showScreen('title');
-  setMusic('title', true); music.paused = false;
+  setMusic('title', true); music.paused = false; setMusicPaused(false);
   snake = demoSnake(); prevSnake = snake.map(s => ({ ...s }));
   bodyMat.emissive.setRGB(0, 0, 0); skinMat.emissive.setRGB(0, 0, 0);
   refit();
@@ -1616,6 +1650,8 @@ $('#btn-resume').addEventListener('click', () => togglePause(false));
 $('#btn-again').addEventListener('click', startGame);
 $('#btn-title').addEventListener('click', goTitle);
 $('#btn-menu').addEventListener('click', e => { e.currentTarget.blur(); if (state === 'play' || state === 'dying') menuOpen ? closeMenu() : openMenu(); });
+$('#btn-mpause').addEventListener('click', e => { e.currentTarget.blur(); initAudio(); setMusicPaused(!music.userPaused); });
+$('#btn-mnext').addEventListener('click', e => { e.currentTarget.blur(); initAudio(); setMusicPaused(false); skipSong(1); });
 $('#btn-pause').addEventListener('click', e => { e.currentTarget.blur(); if (state === 'play' && !menuOpen) togglePause(); });
 $('#name-input').addEventListener('input', e => {
   const v = e.target.value.replace(/[^A-Za-z0-9 ]/g, '').slice(0, 15);

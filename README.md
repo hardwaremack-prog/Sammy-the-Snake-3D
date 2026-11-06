@@ -85,7 +85,7 @@ The title screen plays **Sammy's Theme**, built from the arcade jingle in the or
 
 Canon in D (Pachelbel) · Ode to Joy (Beethoven) · Eine kleine Nachtmusik (Mozart) · Minuet in G (Petzold) · Spring (Vivaldi) · In the Hall of the Mountain King (Grieg, and it speeds up!) · Für Elise (Beethoven) · Twinkle, Twinkle, Little Star · Yankee Doodle · Mary Had a Little Lamb · Frère Jacques (sung as a round)
 
-Pick a song from the **Song** option in the menu (M).
+Use the **pause** and **next** buttons beside "Now playing" on the left panel, or pick a song from the **Song** option in the menu (M).
 
 ## The original
 

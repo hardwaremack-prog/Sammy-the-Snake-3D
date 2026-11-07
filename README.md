@@ -4,6 +4,10 @@
 
 *Created By Charles and Sammy*
 
+## ▶ [Play it now in your browser](https://hardwaremack-prog.github.io/Sammy-the-Snake-3D/)
+
+**https://hardwaremack-prog.github.io/Sammy-the-Snake-3D/**
+
 ![The new 3D title screen](screenshots/new-title.png)
 
 ---

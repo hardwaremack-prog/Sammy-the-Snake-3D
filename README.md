@@ -78,6 +78,9 @@ McChicken, Pepperoni Pizza, Ice Cream Sandwich, Salami Sub: each is worth 10 poi
 | 🍊 Orange | 2x score for 10 seconds |
 | 🍇 Grape | Speed boost for 5 seconds |
 
+### Sammy
+Watch his mouth: Sammy opens wide as he slithers up to a sandwich, then **CHOMPS** it and chews.
+
 ### Danger
 Don't run into the **cat**, **turtle**, **bulldog**, or yourself. You have 3 lives.
 
@@ -87,7 +90,9 @@ The animals don't sit still! Every 20 seconds each one hops to a new spot (they 
 
 The title screen plays **Sammy's Theme**, built from the arcade jingle in the original game. During play, the game cycles through:
 
-Canon in D (Pachelbel) · Ode to Joy (Beethoven) · Eine kleine Nachtmusik (Mozart) · Minuet in G (Petzold) · Spring (Vivaldi) · In the Hall of the Mountain King (Grieg, and it speeds up!) · Für Elise (Beethoven) · Twinkle, Twinkle, Little Star · Yankee Doodle · Mary Had a Little Lamb · Frère Jacques (sung as a round)
+**Classical:** Canon in D (Pachelbel) · Ode to Joy (Beethoven) · Eine kleine Nachtmusik (Mozart) · Minuet in G (Petzold) · Spring (Vivaldi) · In the Hall of the Mountain King (Grieg, and it speeds up!) · Für Elise (Beethoven) · Prelude in C (Bach) · Rondo alla Turca / Turkish March (Mozart) · Morning Mood (Grieg) · Brahms' Lullaby (Brahms)
+
+**Folk & sing-along:** Greensleeves · Amazing Grace · Twinkle, Twinkle, Little Star · Yankee Doodle · Mary Had a Little Lamb · Frère Jacques (sung as a round) · Jingle Bells · When the Saints Go Marching In · Oh! Susanna · London Bridge · Old MacDonald Had a Farm
 
 Use the **pause** and **next** buttons beside "Now playing" on the left panel, or pick a song from the **Song** option in the menu (M).
 

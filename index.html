@@ -486,6 +486,51 @@ const PLAYLIST = [
       { ...BASS, sus: 0.6, st: 1, n: `re ${LA} ${LEND} ${LA} ${LEND} ${LB} ${LA} ${LEND}` }
     ];
   })() },
+  { name: 'Prelude in C', by: 'J. S. Bach', bpm: 66, reps: 1, voices: (() => {
+    // each bar: a five-note chord rolled upward, played twice (the famous broken-chord pattern)
+    const bars = ['C4 E4 G4 C5 E5', 'C4 D4 A4 D5 F5', 'B3 D4 G4 D5 F5', 'C4 E4 G4 C5 E5', 'C4 E4 A4 E5 A5', 'C4 D4 F#4 A4 D5',
+                  'B3 D4 G4 D5 G5', 'B3 C4 E4 G4 C5', 'A3 C4 E4 G4 C5', 'D3 A3 D4 F#4 C5', 'G3 B3 D4 G4 B4', 'C4 E4 G4 C5 E5'];
+    const roll = c => { const [a, b, x, y, z] = c.split(' '); return rep(`${a}s ${b}s ${x}s ${y}s ${z}s ${x}s ${y}s ${z}s`, 2); };
+    return [
+      { ...LEAD, vol: 0.13, st: 1.4, sus: 0.5, n: bars.map(roll).join(' ') + ' C5w' },
+      { ...BASS, sus: 0.7, st: 1, n: bars.map(c => c.split(' ')[0].replace(/\d/, d => d - 1) + 'w').join(' ') + ' C3w' }
+    ];
+  })() },
+  { name: 'Rondo alla Turca (Turkish March)', by: 'Mozart', bpm: 120, reps: 2, voices: [
+    { ...LEAD, n:
+      'B4s A4s G#4s A4s C5e re D5s C5s B4s C5s E5e re F5s E5s D#5s E5s B5s A5s G#5s A5s B5s A5s G#5s A5s C6q ' +
+      'A5e C6e B5e A5e G#5e A5e B5e A5e G#5e A5e B5e A5e G#5e F#5e E5q A4h' },
+    { ...BASS, n:
+      'A2e E3e C3e E3e A2e E3e C3e E3e A2e E3e C3e E3e A2e E3e C3e E3e ' +
+      'A2e E3e C3e E3e E2e B2e G#2e B2e E2e B2e G#2e B2e E2e B2e G#2e B2e A2h' }
+  ] },
+  { name: 'Morning Mood', by: 'Grieg', bpm: 100, reps: 2, voices: [
+    { ...LEAD, type: 'sine', vol: 0.2, n:
+      rep('B4e G#4e F#4e E4e F#4e G#4e B4e G#4e F#4e E4e F#4e G#4e F#4e G#4e B4e G#4e B4e C#5e G#4e C#5e B4e G#4e F#4e E4e', 2) +
+      ' B4q. G#4q. E4h.' },
+    { ...BASS, sus: 0.7, st: 1, n: rep('E2q. B2q. E2q. B2q. E2q. A2q. A2q. E2q.', 2) + ' B2q. B2q. E2h.' }
+  ] },
+  { name: "Brahms' Lullaby", by: 'Brahms', bpm: 100, reps: 2, voices: [
+    { ...LEAD, type: 'sine', vol: 0.2, n:
+      'E4e E4e G4h E4e E4e G4h E4e G4e C5q B4q. A4e A4q G4q D4e E4e F4q D4q D4e E4e F4h D4e F4e ' +
+      'B4e A4e G4q B4q C5h C4e C4e C5h A4e F4e G4h E4e C4e F4q G4q A4q G4h C4e C4e ' +
+      'C5h A4e F4e G4h E4e C4e F4q E4q D4q C4h' },
+    { ...BASS, n: 'rq ' + ['C', 'C', 'F', 'G', 'G', 'G', 'G', 'C', 'F', 'C', 'G', 'C', 'F', 'C', 'G']
+        .map(c => ({ C: 'C3q G3q G3q', F: 'F2q C3q C3q', G: 'G2q D3q D3q' })[c]).join(' ') + ' C3h' }
+  ] },
+  { name: 'Greensleeves', by: 'traditional English', bpm: 96, reps: 2, voices: [
+    { ...LEAD, n:
+      'rq rq re A4e C5q D5e E5e. F5s E5e D5q B4e G4e. A4s B4e C5q A4e A4e. G#4s A4e B4q G#4e E4q A4e ' +
+      'C5q D5e E5e. F5s E5e D5q B4e G4e. A4s B4e C5e. B4s A4e G#4e. F#4s G#4e A4q. rq A4e' },
+    { ...BASS, sus: 0.6, st: 1, n: 'rh. A2h. G2h. A2h. E2h. A2h. G2h. A2q. E2q. A2h.' }
+  ] },
+  { name: 'Amazing Grace', by: 'traditional', bpm: 92, reps: 2, voices: [
+    { ...LEAD, n:
+      'D4q G4h B4e G4e B4h A4q G4h E4q D4h D4q G4h B4e G4e B4h A4e B4e D5h. D5h B4q ' +
+      'D5q. B4e D5e B4e G4h D4q E4q. G4e G4e E4e D4h D4q G4h B4e G4e B4h A4q G4h. G4h' },
+    { ...BASS, n: 'rq ' + ['G', 'G', 'C', 'G', 'G', 'G', 'D', 'D', 'G', 'G', 'C', 'G', 'G', 'D', 'G']
+        .map(c => ({ G: 'G2q D3q D3q', C: 'C3q G3q G3q', D: 'D3q A3q A3q' })[c]).join(' ') + ' G2h' }
+  ] },
   { name: 'Twinkle, Twinkle, Little Star', by: 'traditional', bpm: 112, reps: 2, voices: [
     { ...LEAD, tr: 12, n:
       'C4q C4q G4q G4q A4q A4q G4h F4q F4q E4q E4q D4q D4q C4h ' +
@@ -511,7 +556,35 @@ const PLAYLIST = [
       { ...SOFT, vol: 0.12, n: `rw rw ${F} ${F}` },
       { ...BASS, n: rep('C3h G2h', 18) }
     ];
-  })() }
+  })() },
+  { name: 'Jingle Bells', by: 'James Lord Pierpont', bpm: 144, reps: 2, voices: [
+    { ...LEAD, tr: 12, n:
+      'E4q E4q E4h E4q E4q E4h E4q G4q C4q. D4e E4w F4q F4q F4q. F4e F4q E4q E4q E4e E4e E4q D4q D4q E4q D4h G4h ' +
+      'E4q E4q E4h E4q E4q E4h E4q G4q C4q. D4e E4w F4q F4q F4q F4q F4q E4q E4q E4e E4e G4q G4q F4q D4q C4w' },
+    { ...BASS, n: ['C', 'C', 'C', 'C', 'F', 'C', 'G', 'G', 'C', 'C', 'C', 'C', 'F', 'C', 'G', 'C']
+        .map(c => ({ C: 'C3h G2h', F: 'F2h C3h', G: 'G2h D3h' })[c]).join(' ') }
+  ] },
+  { name: 'When the Saints Go Marching In', by: 'traditional', bpm: 152, reps: 2, voices: [
+    { ...LEAD, tr: 12, n:
+      'rq C4q E4q F4q G4w rq C4q E4q F4q G4w rq C4q E4q F4q G4h E4h C4h E4h D4w ' +
+      'rq E4q E4q D4q C4h. C4q E4h G4q G4q F4w rq C4q E4q F4q G4h E4h C4h D4h C4w' },
+    { ...BASS, n: ['C', 'C', 'C', 'C', 'C', 'C', 'C', 'G', 'C', 'C', 'C', 'F', 'C', 'C', 'G', 'C']
+        .map(c => ({ C: 'C3q G2q C3q G2q', F: 'F2q C3q F2q C3q', G: 'G2q D3q G2q D3q' })[c]).join(' ') }
+  ] },
+  { name: 'Oh! Susanna', by: 'Stephen Foster', bpm: 132, reps: 3, voices: [
+    { ...LEAD, tr: 12, n:
+      'rh rq C4e D4e E4q G4q G4q. A4e G4q E4q C4q. D4e E4q E4q D4q C4q D4h. C4e D4e ' +
+      'E4q G4q G4q. A4e G4q E4q C4q. D4e E4q E4q D4q D4q C4h. rq' },
+    { ...BASS, n: 'rw ' + ['C', 'C', 'C', 'G', 'C', 'C', 'G', 'C'].map(c => ({ C: 'C3h G2h', G: 'G2h D3h' })[c]).join(' ') }
+  ] },
+  { name: 'London Bridge', by: 'traditional', bpm: 120, reps: 3, voices: [
+    { ...LEAD, tr: 12, n: 'G4q. A4e G4q F4q E4q F4q G4h D4q E4q F4h E4q F4q G4h G4q. A4e G4q F4q E4q F4q G4h D4h G4h E4q C4h.' },
+    { ...BASS, n: ['C', 'C', 'G', 'C', 'C', 'C', 'G', 'C'].map(c => ({ C: 'C3h G2h', G: 'G2h D3h' })[c]).join(' ') }
+  ] },
+  { name: 'Old MacDonald Had a Farm', by: 'traditional', bpm: 132, reps: 3, voices: [
+    { ...LEAD, tr: 12, n: 'G4q G4q G4q D4q E4q E4q D4h B4q B4q A4q A4q G4h. D4q G4q G4q G4q D4q E4q E4q D4h B4q B4q A4q A4q G4w' },
+    { ...BASS, n: 'G2h D3h C3h G2h G2h D3h G2h G2h G2h D3h C3h G2h G2h D3h G2h G2h' }
+  ] }
 ];
 /*SONGS-END*/
 
@@ -919,7 +992,16 @@ body.count = 0;   // must come after the colour buffer is created
 const head = new THREE.Group();
 const skinMat = MAT(0x3fd352, { roughness: 0.3, metalness: 0.05 });
 const headBody = new THREE.Group(); head.add(headBody);
-const skull = mesh(S(0.52, 28, 20), skinMat); skull.scale.set(1, 0.78, 1.12); headBody.add(skull);
+skinMat.side = THREE.DoubleSide;
+// upper head (top half of the skull) + mouth roof
+const skull = mesh(halfS(0.52, 28, 14), skinMat); skull.scale.set(1, 0.85, 1.12); headBody.add(skull);
+const mouthMat = MAT(0x7a0f1e, { roughness: 0.6 });
+const roof = mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.01, 28), mouthMat, 0, 0.006, 0); roof.scale.z = 1.1; headBody.add(roof);
+[-1, 1].forEach(s => { const fang = mesh(new THREE.ConeGeometry(0.035, 0.1, 8), MAT(0xffffff, { roughness: 0.2 }), s * 0.14, -0.04, 0.47); fang.rotation.x = Math.PI; headBody.add(fang); });
+// lower jaw, hinged at the back of the head so it can open wide and CHOMP
+const jaw = new THREE.Group(); jaw.position.set(0, 0, -0.38); headBody.add(jaw);
+const jawM = mesh(new THREE.SphereGeometry(0.52, 28, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), skinMat, 0, 0, 0.38); jawM.scale.set(0.97, 0.55, 1.1); jaw.add(jawM);
+const floor = mesh(new THREE.CylinderGeometry(0.49, 0.49, 0.01, 28), mouthMat, 0, -0.006, 0.38); floor.scale.z = 1.08; jaw.add(floor);
 const eyeWhite = MAT(0xffffff, { roughness: 0.2 }), pupilM = MAT(0x111111, { roughness: 0.1 }), shine = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const browMat = MAT(0x123d18);
 [-1, 1].forEach(s => {
@@ -928,10 +1010,12 @@ const browMat = MAT(0x123d18);
   headBody.add(mesh(S(0.03, 8, 6), shine, s * 0.22, 0.32, 0.43));
   const brow = mesh(new THREE.BoxGeometry(0.22, 0.05, 0.07), browMat, s * 0.24, 0.43, 0.3); brow.rotation.z = -s * 0.28; headBody.add(brow);
 });
-const smile = mesh(new THREE.TorusGeometry(0.17, 0.028, 8, 20, Math.PI), MAT(0xd8202a), 0, -0.04, 0.5);
-smile.rotation.z = Math.PI; smile.rotation.x = -0.25; headBody.add(smile);
 [-1, 1].forEach(s => headBody.add(mesh(S(0.025, 6, 6), MAT(0x1d5e25), s * 0.08, 0.06, 0.57)));
-const tongue = new THREE.Group(); tongue.position.set(0, -0.12, 0.5); headBody.add(tongue);
+// the top of the head is hinged too, so it tips back while the jaw drops (easy to see from above)
+const upper = new THREE.Group(); upper.position.set(0, 0, -0.38);
+headBody.children.slice().forEach(c => { if (c !== jaw) { c.position.z += 0.38; upper.add(c); } });
+headBody.add(upper);
+const tongue = new THREE.Group(); tongue.position.set(0, 0.0, 0.8); jaw.add(tongue);
 const tongueMat = MAT(0xff3355, { roughness: 0.4 });
 tongue.add(mesh(new THREE.BoxGeometry(0.06, 0.02, 0.28), tongueMat, 0, 0, 0.14));
 [-1, 1].forEach(s => { const f = mesh(new THREE.BoxGeometry(0.04, 0.02, 0.12), tongueMat, s * 0.035, 0, 0.31); f.rotation.y = s * 0.5; tongue.add(f); });
@@ -1172,6 +1256,7 @@ function tick() {
   }
   if (isAt(power, nx, ny)) {
     const def = power.def;
+    munchT = 0;
     sfx.power();
     burst(wx, 0.5, wz, def.color, 34, 4.5, 4);
     floatText(wx, 1, wz, def.pop, 'big');
@@ -1362,7 +1447,12 @@ function demoTick() {
 const segPos = Array.from({ length: MAXSEG }, () => new THREE.Vector3());
 const mtx = new THREE.Matrix4(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
 const colA = new THREE.Color(0x46dc58), colB = new THREE.Color(0x228f35), colStripe = new THREE.Color(0xc9f25a), colRed = new THREE.Color(0xff3b3b);
-let headYaw = Math.PI / 2;
+let headYaw = Math.PI / 2, jawOpen = 0;
+function aheadDist(tx, ty) {      // how many squares straight ahead the target is (99 if not in line)
+  const h = snake[0]; if (!h) return 99;
+  for (let k = 1; k <= 3; k++) { if ((h.x + dir.x * k + GW * 4) % GW === tx && (h.y + dir.y * k + GH * 4) % GH === ty) return k; }
+  return 99;
+}
 
 function renderSnake(alpha, dt) {
   const n = snake.length;
@@ -1426,8 +1516,19 @@ function renderSnake(alpha, dt) {
   const munch = munchT < 0.3 ? Math.sin(munchT / 0.3 * Math.PI) : 0;
   const breathe = 1 + Math.sin(T * 3) * 0.04;
   head.scale.set(shrink * breathe * (1 + munch * 0.25), shrink * breathe * (1 - munch * 0.12), shrink * breathe * (1 + munch * 0.1));
+  // mouth opens wider the closer Sammy gets to food straight ahead, then CHOMPs shut and chews
+  let open = 0;
+  if (state === 'play') [food, power].forEach(t => {
+    if (!t) return;
+    const steps = aheadDist(t.x, t.y);
+    if (steps < 9) open = Math.max(open, clamp(1 - (steps - alpha - 0.6) / 2.0, 0, 1));
+  });
+  if (munchT < 0.6) { const q = munchT / 0.6; open = Math.max(open, Math.abs(Math.sin(q * Math.PI * 3)) * (1 - q) * 0.9); }
+  jawOpen += (open - jawOpen) * (1 - Math.exp(-dt * (open < jawOpen ? 45 : 16)));
+  jaw.rotation.x = jawOpen * 0.6;
+  upper.rotation.x = -jawOpen * 0.7;
   const tt = T % 1.8;
-  tongue.scale.z = munch > 0 ? munch : (tt < 0.4 ? Math.sin(tt / 0.4 * Math.PI) : 0.001);
+  tongue.scale.z = jawOpen > 0.2 ? 0.5 : (tt < 0.4 ? Math.sin(tt / 0.4 * Math.PI) : 0.001);
   tongue.rotation.y = Math.sin(T * 40) * 0.15;
   skinMat.emissive.set(flash ? 0x991111 : 0x000000);
 }
